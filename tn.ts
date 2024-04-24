@@ -13,7 +13,7 @@ type Position = [number, number]
 type Eaten = keyof IPowerUps | 'apple'
 type Range = 'exact' | 'expanded'
 
-interface IICons
+interface IIcons
 {
   target?: string
   body?: string
@@ -28,9 +28,10 @@ interface IOptions
   updateTime?: number
   scorePerApple?: number
   difficulty?: Difficulty | null
-  icons?: IICons
+  icons?: IIcons
   powerUps?: IPowerUps
   expandedRange?: number
+  board?: IBoard
 }
 
 interface ISpeeds
@@ -53,8 +54,15 @@ interface IPowerUp
   type: keyof IPowerUps
 }
 
+interface IBoard
+{
+  width: number
+  height: number
+}
+
 class Snake
 {
+  private board: IBoard = { height: 20, width: 20 }
   private snake: Position[] = [[10, 10]]
   private apple: Position = this.getRandomIndex()
   private direction: Position = [0, -1]
@@ -63,8 +71,8 @@ class Snake
   private scorePerApple: number = 5
   private difficulty: Difficulty = 'easy'
   private speeds: ISpeeds = { easy: 1000, medium: 250, high: 70 }
-  private icons: IICons = { backgorund: '⬜️', body: '🐍', target: '🍎', bonus: '🍐', magnet: '🧲', slowmo: '🧊' }
-  private powerUps: IPowerUps = { magnet: { enable: true, probability: 1 }, slowmo: { enable: true, probability: 1 }, bonus: { enable: true, probability: 1 } }
+  private icons: IIcons = { backgorund: '⬜️', body: '🐍', target: '🍎', bonus: '🍐', magnet: '🧲', slowmo: '🧊' }
+  private powerUps: IPowerUps = { magnet: { enable: false, probability: 0.4 }, slowmo: { enable: false, probability: 0.2 }, bonus: { enable: false, probability: 0.5 } }
   private powerUpsOnBoard: IPowerUp[] = []
   private range: Range = 'exact'
   private expandedRange: number = 1
@@ -75,6 +83,7 @@ class Snake
 
   initialize(options?: IOptions)
   {
+    this.board = options?.board || this.board
     this.expandedRange = options?.expandedRange || this.expandedRange
     this.icons = { ...this.icons, ...(options?.icons || this.icons) }
     this.powerUps = options?.powerUps || this.powerUps
@@ -114,17 +123,14 @@ class Snake
       }
     })
 
-    this.intervalId = setInterval(() =>
-    {
-      this.update()
-    }, this.updateTime)
+    this.intervalId = setInterval(() => this.update(), this.updateTime)
   }
 
   update()
   {
     const head = this.snake[0].slice() as Position
-    head[0] = (head[0] + this.direction[0] + 20) % 20
-    head[1] = (head[1] + this.direction[1] + 20) % 20
+    head[0] = (head[0] + this.direction[0] + this.board.width) % this.board.width
+    head[1] = (head[1] + this.direction[1] + this.board.height) % this.board.height
 
     for (let i = 1; i < this.snake.length; i++)
     {
@@ -150,6 +156,8 @@ class Snake
   {
     const oldBackgroundIcon = this.icons.backgorund
     const oldScorePerApple = this.scorePerApple
+
+    if (eaten !== 'apple') this.deletePowerUp(eaten as keyof IPowerUps)
     
     switch (eaten)
     {
@@ -159,13 +167,14 @@ class Snake
 
         const random = Math.random()
 
-        if (this.powerUps.magnet.enable && (random < this.powerUps.magnet.probability)) this.addPowerUp('magnet')
-        if (this.powerUps.bonus.enable && (random < this.powerUps.bonus.probability)) this.addPowerUp('bonus')
-        if (this.powerUps.slowmo.enable && (random < this.powerUps.slowmo.probability)) this.addPowerUp('slowmo')
+        for (const powerUpType of Object.keys(this.powerUps) as Array<keyof IPowerUps>)
+        {
+          const powerUp = this.powerUps[powerUpType]
+          if (powerUp.enable && random < powerUp.probability) this.addPowerUp(powerUpType)
+        }
         break
 
       case 'magnet':
-        this.deletePowerUp(eaten)
         this.range = 'expanded'
         setTimeout(() =>
         {
@@ -174,7 +183,6 @@ class Snake
         break
 
       case 'slowmo':
-        this.deletePowerUp('slowmo')
         clearInterval(this.intervalId as Timer)
         this.intervalId = setInterval(() => this.update(), this.updateTime + 200)
 
@@ -186,13 +194,11 @@ class Snake
         break
 
       case 'bonus':
-        this.deletePowerUp(eaten)
-
         const intervalId = setInterval(() =>
         {
           this.icons.backgorund = this.icons.backgorund === '🟦' ? '⬜' : '🟦'
-          this.draw()
           this.scorePerApple = 15
+          this.draw()
         }, this.updateTime)
 
         setTimeout(() =>
@@ -227,7 +233,7 @@ class Snake
 
   getRandomIndex()
   {
-    return [Math.floor(Math.random() * 20), Math.floor(Math.random() * 20)] as Position
+    return [Math.floor(Math.random() * this.board.width), Math.floor(Math.random() * this.board.height)] as Position
   }
 
   isInRange(position: Position): boolean
@@ -252,13 +258,13 @@ class Snake
     console.clear()
   
     console.log('Difficulty:', this.difficulty.charAt(0).toUpperCase() + this.difficulty.slice(1))
-    console.log('Score:', this.score, '\t')
+    console.log('Score:', this.score, '\t\t\t', this.powerUpsOnBoard.map((item) => this.icons[item.type]).join(' '))
 
-    for (let i = 0; i < 20; i++)
+    for (let i = 0; i < this.board.width; i++)
     {
       let row = ''
 
-      for (let j = 0; j < 20; j++)
+      for (let j = 0; j < this.board.height; j++)
       {
         let isPowerUp = false
 
@@ -291,7 +297,8 @@ const options: IOptions =
 {
   scorePerApple: 8,
   difficulty: 'high',
-  icons: { backgorund: '⬛', body: '🗿' }
+  icons: { backgorund: '⬛', body: '🗿' },
+  board: { width: 50, height: 50 }
 }
 
 snake.initialize(options)
