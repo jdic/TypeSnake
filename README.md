@@ -19,7 +19,6 @@ The main class of the game, responsible for managing the game logic and user int
 - **getRandomIndex()**: Generates a random position on the board.
 - **isInRange()**: Checks if a position is within the collision detection range.
 - **draw()**: Draws the current state of the game in the console.
-- **draw()**: Dibuja el estado actual del juego en la consola.
 
 ## Usage
 
