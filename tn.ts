@@ -60,7 +60,7 @@ interface IBoard
   height: number
 }
 
-class Snake
+export class Snake
 {
   private board: IBoard = { height: 20, width: 20 }
   private snake: Position[] = [[10, 10]]
@@ -83,6 +83,8 @@ class Snake
 
   initialize(options?: IOptions)
   {
+    console.clear()
+
     this.board = options?.board || this.board
     this.expandedRange = options?.expandedRange || this.expandedRange
     this.icons = { ...this.icons, ...(options?.icons || this.icons) }
@@ -102,19 +104,19 @@ class Snake
       switch (key.name)
       {
         case Movement.Up:
-          if (this.direction[0] !== 1) this.direction = [-1, 0]
+          if (this.direction[1] !== 1 || this.snake.length === 1) this.direction = [0, -1]
           break
 
         case Movement.Down:
-          if (this.direction[0] !== -1) this.direction = [1, 0]
+          if (this.direction[1] !== -1 || this.snake.length === 1) this.direction = [0, 1]
           break
 
         case Movement.Left:
-          if (this.direction[1] !== 1) this.direction = [0, -1]
+          if (this.direction[0] !== 1 || this.snake.length === 1) this.direction = [-1, 0]
           break
 
         case Movement.Right:
-          if (this.direction[1] !== -1) this.direction = [0, 1]
+          if (this.direction[0] !== -1 || this.snake.length === 1) this.direction = [1, 0]
           break
 
         case 'c':
@@ -158,7 +160,7 @@ class Snake
     const oldScorePerApple = this.scorePerApple
 
     if (eaten !== 'apple') this.deletePowerUp(eaten as keyof IPowerUps)
-    
+
     switch (eaten)
     {
       case 'apple':
@@ -255,39 +257,36 @@ class Snake
 
   draw()
   {
-    console.clear()
-  
-    console.log('Difficulty:', this.difficulty.charAt(0).toUpperCase() + this.difficulty.slice(1))
-    console.log('Score:', this.score, '\t\t\t', this.powerUpsOnBoard.map((item) => this.icons[item.type]).join(' '))
+    let board = ''
 
-    for (let i = 0; i < this.board.width; i++)
+    for (let i = 0; i < this.board.height; i++)
     {
       let row = ''
 
-      for (let j = 0; j < this.board.height; j++)
+      for (let j = 0; j < this.board.width; j++)
       {
-        let isPowerUp = false
+        let icon = this.icons.backgorund
 
-        for (const powerUp of this.powerUpsOnBoard)
-        {
-          if (powerUp.position[0] === i && powerUp.position[1] === j)
-          {
-            row += this.icons[powerUp.type]
-            isPowerUp = true
-            break
-          }
-        }
+        if (this.apple[0] === j && this.apple[1] === i)
+          icon = this.icons.target
 
-        if (!isPowerUp)
-        {
-          if (this.snake.find((part) => part[0] === i && part[1] === j)) row += this.icons.body
-          else if (this.apple[0] === i && this.apple[1] === j) row += this.icons.target
-          else row += this.icons.backgorund
-        }
+        const powerUp = this.powerUpsOnBoard.find((powerUp) => powerUp.position[0] === j && powerUp.position[1] === i)
+        if (powerUp) icon = this.icons[powerUp.type]
+
+        const snakePart = this.snake.find((part) => part[0] === j && part[1] === i)
+        if (snakePart) icon = this.icons.body
+
+        row += icon
       }
 
-      console.log(row)
+      board += row + '\n'
     }
+
+    process.stdout.write('\x1b[H')
+    process.stdout.write(board + '\n')
+
+    console.log('Difficulty:', this.difficulty.charAt(0).toUpperCase() + this.difficulty.slice(1))
+    console.log('Score:', this.score)
   }
 }
 
@@ -297,8 +296,7 @@ const options: IOptions =
 {
   scorePerApple: 8,
   difficulty: 'high',
-  icons: { backgorund: '⬛', body: '🗿' },
-  board: { width: 50, height: 50 }
+  icons: { backgorund: '⬛', body: '🗿' }
 }
 
 snake.initialize(options)
